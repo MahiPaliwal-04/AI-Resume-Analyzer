@@ -1,0 +1,52 @@
+
+job_role,skills
+Data Scientist,"Python, Machine Learning, Pandas, NumPy, Scikit-learn, SQL, Statistics, Data Visualization"
+Data Scientist,"Python, Statistics, SQL, Pandas, NumPy, Machine Learning, Matplotlib, Seaborn"
+Data Scientist,"Python, Deep Learning, Machine Learning, SQL, Pandas, NumPy, Scikit-learn"
+Data Scientist,"Python, Data Analysis, Statistics, SQL, Machine Learning, Pandas, Tableau"
+
+Machine Learning Engineer,"Python, Machine Learning, Deep Learning, TensorFlow, PyTorch, Scikit-learn, SQL, Git"
+Machine Learning Engineer,"Python, Machine Learning, TensorFlow, Docker, Git, AWS, PyTorch"
+Machine Learning Engineer,"Python, Deep Learning, PyTorch, Scikit-learn, Docker, Kubernetes, Git"
+Machine Learning Engineer,"Python, Machine Learning, NLP, TensorFlow, AWS, Git, SQL"
+
+Data Analyst,"Python, SQL, Excel, Pandas, NumPy, Statistics, Data Visualization, Power BI"
+Data Analyst,"SQL, Excel, Power BI, Tableau, Statistics, Data Analysis, Python"
+Data Analyst,"Python, SQL, Pandas, Excel, Tableau, Data Visualization"
+Data Analyst,"SQL, Excel, Statistics, Power BI, Python, NumPy, Pandas"
+
+Python Developer,"Python, Django, Flask, FastAPI, REST API, SQL, Git, OOP"
+Python Developer,"Python, Django, REST API, PostgreSQL, Git, OOP, Flask"
+Python Developer,"Python, Flask, FastAPI, SQL, Git, REST API, Docker"
+Python Developer,"Python, Django, SQL, Git, APIs, Object Oriented Programming"
+
+Web Developer,"HTML, CSS, JavaScript, React, Node.js, Git, REST API"
+Web Developer,"HTML, CSS, JavaScript, Bootstrap, React, Git, REST API"
+Web Developer,"JavaScript, HTML, CSS, React, Node.js, Git, MongoDB"
+Web Developer,"HTML, CSS, JavaScript, Angular, Git, REST API, Node.js"
+
+Backend Developer,"Python, Java, Node.js, SQL, REST API, Git, Docker"
+Backend Developer,"Python, Java, Spring Boot, SQL, REST API, Git, Docker"
+Backend Developer,"Node.js, JavaScript, SQL, REST API, Docker, Git"
+Backend Developer,"Python, FastAPI, PostgreSQL, Docker, REST API, Git"
+
+Software Engineer,"Python, Java, C++, Data Structures, Algorithms, Git, SQL"
+Software Engineer,"Java, Data Structures, Algorithms, OOP, Git, SQL, C++"
+Software Engineer,"Python, Java, Algorithms, Data Structures, Git, Linux"
+Software Engineer,"C++, Java, Python, OOP, Algorithms, SQL, Git"
+
+AI Engineer,"Python, Machine Learning, Deep Learning, TensorFlow, PyTorch, NLP, Computer Vision"
+AI Engineer,"Python, AI, Machine Learning, Deep Learning, TensorFlow, Computer Vision"
+AI Engineer,"Python, PyTorch, Deep Learning, Computer Vision, NLP, Machine Learning"
+AI Engineer,"Python, TensorFlow, PyTorch, NLP, Machine Learning, AI, Docker"
+
+NLP Engineer,"Python, NLP, Machine Learning, Transformers, TensorFlow, PyTorch, NLTK"
+NLP Engineer,"Python, NLP, Transformers, BERT, PyTorch, Machine Learning, NLTK"
+NLP Engineer,"Python, Natural Language Processing, Hugging Face, Transformers, PyTorch"
+NLP Engineer,"Python, NLP, Deep Learning, TensorFlow, Transformers, Scikit-learn"
+
+Data Engineer,"Python, SQL, Apache Spark, ETL, Pandas, Docker, AWS, Git"
+Data Engineer,"Python, SQL, Spark, Airflow, ETL, AWS, Docker"
+Data Engineer,"SQL, Python, Apache Spark, Data Pipelines, AWS, Git"
+Data Engineer,"Python, Spark, Kafka, SQL, ETL, Docker, Cloud"
+
