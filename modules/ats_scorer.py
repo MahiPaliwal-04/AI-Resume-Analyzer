@@ -11,6 +11,7 @@ def clean_text(text):
     """
 
     if not text:
+        
         return ""
 
     text = text.lower()

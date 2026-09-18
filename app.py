@@ -16,7 +16,7 @@ from modules.ats_scorer import calculate_ats_score
 
 
 # ============================================================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ============================================================
 
 st.set_page_config(
@@ -37,8 +37,8 @@ st.markdown(
 )
 
 st.info(
-    "Upload your resume and paste a job description to get an AI-powered "
-    "analysis of your resume."
+    "Upload your resume and paste a job description to get "
+    "an AI-powered analysis of your resume."
 )
 
 
@@ -65,7 +65,7 @@ st.divider()
 
 
 # ============================================================
-# MODEL EVALUATION
+# MODEL INFORMATION
 # ============================================================
 
 with st.expander("🧠 View AI Model Information"):
@@ -76,35 +76,49 @@ with st.expander("🧠 View AI Model Information"):
     )
 
     try:
+
         evaluation = evaluate_model()
 
         if isinstance(evaluation, dict):
 
-            metric_cols = st.columns(len(evaluation))
+            metric_cols = st.columns(
+                min(len(evaluation), 4)
+            )
 
-            for index, (key, value) in enumerate(evaluation.items()):
+            for index, (key, value) in enumerate(
+                evaluation.items()
+            ):
 
-                with metric_cols[index]:
-                    try:
-                        if isinstance(value, float):
-                            st.metric(
-                                key.replace("_", " ").title(),
-                                f"{value:.2f}"
-                            )
-                        else:
-                            st.metric(
-                                key.replace("_", " ").title(),
-                                str(value)
-                            )
-                    except Exception:
-                        st.write(f"**{key}:** {value}")
+                with metric_cols[index % len(metric_cols)]:
+
+                    if isinstance(value, float):
+
+                        st.metric(
+                            key.replace("_", " ").title(),
+                            f"{value:.2f}"
+                        )
+
+                    else:
+
+                        st.metric(
+                            key.replace("_", " ").title(),
+                            str(value)
+                        )
 
         elif evaluation is not None:
+
             st.write(evaluation)
 
-    except Exception:
+        else:
+
+            st.caption(
+                "Model evaluation information is currently unavailable."
+            )
+
+    except Exception as e:
+
         st.caption(
-            "Model evaluation information is currently unavailable."
+            f"Model evaluation information is currently unavailable: {e}"
         )
 
 
@@ -120,6 +134,10 @@ st.header("📥 Resume & Job Description")
 input_col1, input_col2 = st.columns(2)
 
 
+# ============================================================
+# RESUME UPLOAD
+# ============================================================
+
 with input_col1:
 
     st.subheader("📄 Upload Resume")
@@ -129,18 +147,29 @@ with input_col1:
         type=["pdf"]
     )
 
+    if uploaded_file:
+
+        st.success(
+            f"Uploaded: {uploaded_file.name}"
+        )
+
+
+# ============================================================
+# JOB DESCRIPTION
+# ============================================================
 
 with input_col2:
 
-    st.subheader("💼 Job Description")
+    st.subheader("💼 Target Job")
 
     job_description = st.text_area(
         "Paste the job description here",
         height=250,
         placeholder=(
-            "Example:\n"
-            "We are looking for a Python Developer with experience in "
-            "Machine Learning, SQL, Pandas, NumPy and Git..."
+            "Example:\n\n"
+            "We are looking for a Python Developer with experience "
+            "in Machine Learning, SQL, Pandas, NumPy, Scikit-learn "
+            "and Git."
         )
     )
 
@@ -187,208 +216,544 @@ if analyze_button:
         st.stop()
 
 
-    # --------------------------------------------------------
-    # PROCESSING
-    # --------------------------------------------------------
+    # ========================================================
+    # STEP 1 — RESUME TEXT EXTRACTION
+    # ========================================================
 
-    with st.spinner("🤖 AI is analyzing your resume..."):
+    with st.spinner(
+        "📖 Extracting text from resume..."
+    ):
 
         try:
 
-            # =================================================
-            # RESUME TEXT EXTRACTION
-            # =================================================
-
-            resume_text = extract_text_from_pdf(uploaded_file)
-
-            if not resume_text or not resume_text.strip():
-
-                st.error(
-                    "❌ Could not extract text from the uploaded PDF."
-                )
-
-                st.stop()
-
-
-            # =================================================
-            # SKILL EXTRACTION
-            # =================================================
-
-            resume_skills = extract_skills(resume_text)
-
-            job_skills = extract_skills(job_description)
-
-
-            # =================================================
-            # MATCHING
-            # =================================================
-
-            try:
-
-                match_result = calculate_match(
-                    resume_skills,
-                    job_skills
-                )
-
-            except Exception:
-
-                match_result = 0
-
-
-            # =================================================
-            # TF-IDF SIMILARITY
-            # =================================================
-
-            try:
-
-                similarity_score = calculate_similarity(
-                    resume_text,
-                    job_description
-                )
-
-            except Exception:
-
-                similarity_score = 0
-
-
-            # =================================================
-            # ATS SCORE
-            # =================================================
-
-            try:
-
-                ats_result = calculate_ats_score(
-                    resume_text,
-                    job_description
-                )
-
-            except Exception:
-
-                ats_result = 0
-
-
-            # =================================================
-            # CONVERT SCORES SAFELY
-            # =================================================
-
-            def normalize_score(value):
-
-                try:
-
-                    if isinstance(value, dict):
-
-                        possible_keys = [
-                            "score",
-                            "ats_score",
-                            "match_score",
-                            "similarity",
-                            "percentage"
-                        ]
-
-                        for key in possible_keys:
-
-                            if key in value:
-
-                                value = value[key]
-                                break
-
-                    if isinstance(value, (list, tuple)):
-
-                        if len(value) > 0:
-                            value = value[0]
-
-                    value = float(value)
-
-                    if value <= 1:
-                        value = value * 100
-
-                    value = max(0, min(100, value))
-
-                    return value
-
-                except Exception:
-
-                    return 0.0
-
-
-            match_score = normalize_score(match_result)
-
-            similarity_score = normalize_score(similarity_score)
-
-            ats_score = normalize_score(ats_result)
-
-
-            # =================================================
-            # MISSING SKILLS
-            # =================================================
-
-            resume_skill_lower = {
-                skill.lower()
-                for skill in resume_skills
-            }
-
-            missing_skills = [
-                skill
-                for skill in job_skills
-                if skill.lower() not in resume_skill_lower
-            ]
-
-
-            # =================================================
-            # FINAL AI SCORE
-            # =================================================
-
-            final_ai_score = (
-                (ats_score * 0.40)
-                + (similarity_score * 0.35)
-                + (match_score * 0.25)
+            resume_text = extract_text_from_pdf(
+                uploaded_file
             )
-
-            final_ai_score = max(
-                0,
-                min(100, final_ai_score)
-            )
-
-
-            # =================================================
-            # STORE IN SESSION
-            # =================================================
-
-            st.session_state["resume_text"] = resume_text
-            st.session_state["resume_skills"] = resume_skills
-            st.session_state["job_skills"] = job_skills
-            st.session_state["missing_skills"] = missing_skills
-            st.session_state["match_score"] = match_score
-            st.session_state["similarity_score"] = similarity_score
-            st.session_state["ats_score"] = ats_score
-            st.session_state["final_ai_score"] = final_ai_score
-
-
-            # =================================================
-            # SUCCESS
-            # =================================================
-
-            st.success(
-                "✅ Resume successfully processed and analyzed!"
-            )
-
 
         except Exception as e:
 
             st.error(
-                f"❌ Analysis failed: {str(e)}"
+                f"❌ Resume parsing failed: {e}"
+            )
+
+            st.stop()
+
+
+    if not resume_text or not resume_text.strip():
+
+        st.error(
+            "❌ Could not extract readable text from the uploaded PDF."
+        )
+
+        st.stop()
+
+
+    # ========================================================
+    # STEP 2 — SKILL EXTRACTION
+    # ========================================================
+
+    with st.spinner(
+        "🛠️ Detecting resume and job skills..."
+    ):
+
+        try:
+
+            resume_skills = extract_skills(
+                resume_text
+            )
+
+        except Exception:
+
+            resume_skills = []
+
+
+        try:
+
+            job_skills = extract_skills(
+                job_description
+            )
+
+        except Exception:
+
+            job_skills = []
+
+
+    if not isinstance(
+        resume_skills,
+        list
+    ):
+
+        resume_skills = list(
+            resume_skills
+        )
+
+
+    if not isinstance(
+        job_skills,
+        list
+    ):
+
+        job_skills = list(
+            job_skills
+        )
+
+
+    # ========================================================
+    # STEP 3 — JOB MATCHING
+    # ========================================================
+
+    with st.spinner(
+        "🎯 Calculating job match..."
+    ):
+
+        try:
+
+            match_result = calculate_match(
+                resume_text,
+                job_description
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"❌ Matching calculation failed: {e}"
             )
 
             st.stop()
 
 
     # ========================================================
-    # TOP SCORE DASHBOARD
+    # MATCH RESULT
+    # ========================================================
+
+    match_percentage = 0.0
+    matched_skills = []
+    missing_skills = []
+
+
+    try:
+
+        if isinstance(
+            match_result,
+            dict
+        ):
+
+            match_percentage = match_result.get(
+                "match_percentage",
+                match_result.get(
+                    "score",
+                    0
+                )
+            )
+
+            matched_skills = match_result.get(
+                "matched_skills",
+                []
+            )
+
+            missing_skills = match_result.get(
+                "missing_skills",
+                []
+            )
+
+
+        elif isinstance(
+            match_result,
+            (tuple, list)
+        ):
+
+            match_percentage = (
+                match_result[0]
+                if len(match_result) > 0
+                else 0
+            )
+
+            matched_skills = (
+                match_result[1]
+                if len(match_result) > 1
+                else []
+            )
+
+            missing_skills = (
+                match_result[2]
+                if len(match_result) > 2
+                else []
+            )
+
+        else:
+
+            match_percentage = match_result
+
+    except Exception:
+
+        match_percentage = 0
+        matched_skills = []
+        missing_skills = []
+
+
+    # ========================================================
+    # NORMALIZE MATCH SCORE
+    # ========================================================
+
+    try:
+
+        match_percentage = float(
+            match_percentage
+        )
+
+    except Exception:
+
+        match_percentage = 0.0
+
+
+    if match_percentage <= 1:
+
+        match_percentage *= 100
+
+
+    match_percentage = max(
+        0.0,
+        min(
+            100.0,
+            match_percentage
+        )
+    )
+
+
+    # ========================================================
+    # AUTHORITATIVE SKILL MATCHING
+    # ========================================================
+
+    resume_skill_map = {
+        str(skill).strip().lower(): str(skill).strip()
+        for skill in resume_skills
+        if str(skill).strip()
+    }
+
+
+    job_skill_map = {
+        str(skill).strip().lower(): str(skill).strip()
+        for skill in job_skills
+        if str(skill).strip()
+    }
+
+
+    matched_skills = []
+    missing_skills = []
+
+
+    for skill_key, original_skill in job_skill_map.items():
+
+        if skill_key in resume_skill_map:
+
+            matched_skills.append(
+                resume_skill_map[skill_key]
+            )
+
+        else:
+
+            missing_skills.append(
+                original_skill
+            )
+
+
+    matched_skills = sorted(
+        set(matched_skills),
+        key=str.lower
+    )
+
+
+    missing_skills = sorted(
+        set(missing_skills),
+        key=str.lower
+    )
+
+
+    # ========================================================
+    # FINAL SKILL MATCH SCORE
+    # ========================================================
+
+    if job_skill_map:
+
+        match_percentage = (
+            len(matched_skills)
+            / len(job_skill_map)
+            * 100
+        )
+
+    else:
+
+        match_percentage = 0.0
+
+
+    match_percentage = round(
+        match_percentage,
+        2
+    )
+
+
+    # ========================================================
+    # STEP 4 — TF-IDF SIMILARITY
+    # ========================================================
+
+    with st.spinner(
+        "🧠 Calculating TF-IDF text similarity..."
+    ):
+
+        try:
+
+            similarity_score = calculate_similarity(
+                resume_text,
+                job_description
+            )
+
+        except Exception as e:
+
+            st.warning(
+                f"⚠️ TF-IDF similarity calculation failed: {e}"
+            )
+
+            similarity_score = 0.0
+
+
+    try:
+
+        similarity_score = float(
+            similarity_score
+        )
+
+    except Exception:
+
+        similarity_score = 0.0
+
+
+    if similarity_score <= 1:
+
+        similarity_score *= 100
+
+
+    similarity_score = max(
+        0.0,
+        min(
+            100.0,
+            similarity_score
+        )
+    )
+
+
+    similarity_score = round(
+        similarity_score,
+        2
+    )
+
+
+    # ========================================================
+    # STEP 5 — ATS ANALYSIS
+    # ========================================================
+
+    with st.spinner(
+        "📊 Calculating ATS score..."
+    ):
+
+        try:
+
+            ats_result = calculate_ats_score(
+                resume_text,
+                job_description,
+                resume_skills=resume_skills,
+                required_skills=job_skills
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"❌ ATS analysis failed: {e}"
+            )
+
+            st.stop()
+
+
+    # ========================================================
+    # ATS RESULT
+    # ========================================================
+
+    if not isinstance(
+        ats_result,
+        dict
+    ):
+
+        st.error(
+            "❌ ATS analyzer returned an unexpected result."
+        )
+
+        st.stop()
+
+
+    ats_score = ats_result.get(
+        "ats_score",
+        0
+    )
+
+    ats_keyword_match = ats_result.get(
+        "keyword_match",
+        0
+    )
+
+    ats_skill_match = ats_result.get(
+        "skill_match",
+        0
+    )
+
+    resume_quality = ats_result.get(
+        "resume_quality",
+        0
+    )
+
+    quality_feedback = ats_result.get(
+        "quality_feedback",
+        []
+    )
+
+    ats_matched_keywords = ats_result.get(
+        "matched_keywords",
+        []
+    )
+
+    ats_missing_keywords = ats_result.get(
+        "missing_keywords",
+        []
+    )
+
+
+    # ========================================================
+    # SCORE HELPER
+    # ========================================================
+
+    def safe_score(value):
+
+        try:
+
+            value = float(value)
+
+        except Exception:
+
+            return 0.0
+
+
+        if value <= 1:
+
+            value *= 100
+
+
+        return max(
+            0.0,
+            min(
+                100.0,
+                value
+            )
+        )
+
+
+    ats_score = safe_score(
+        ats_score
+    )
+
+    ats_keyword_match = safe_score(
+        ats_keyword_match
+    )
+
+    ats_skill_match = safe_score(
+        ats_skill_match
+    )
+
+    resume_quality = safe_score(
+        resume_quality
+    )
+
+
+    # Keep visible skill match consistent
+    ats_skill_match = match_percentage
+
+
+    # ========================================================
+    # KEYWORD COVERAGE
+    # ========================================================
+
+    total_job_skills = len(
+        job_skills
+    )
+
+    matched_skill_count = len(
+        matched_skills
+    )
+
+    missing_skill_count = len(
+        missing_skills
+    )
+
+
+    if total_job_skills > 0:
+
+        keyword_percentage = (
+            matched_skill_count
+            / total_job_skills
+            * 100
+        )
+
+    else:
+
+        keyword_percentage = 0.0
+
+
+    keyword_percentage = round(
+        keyword_percentage,
+        2
+    )
+
+
+    # ========================================================
+    # FINAL AI SCORE
+    # ========================================================
+
+    final_ai_score = (
+        (ats_score * 0.40)
+        + (match_percentage * 0.30)
+        + (similarity_score * 0.30)
+    )
+
+
+    final_ai_score = max(
+        0.0,
+        min(
+            100.0,
+            final_ai_score
+        )
+    )
+
+
+    final_ai_score = round(
+        final_ai_score,
+        2
+    )
+
+
+    # ========================================================
+    # RESUME TEXT
+    # ========================================================
+
+    resume_lower = resume_text.lower()
+
+
+    # ========================================================
+    # DASHBOARD
     # ========================================================
 
     st.divider()
 
-    st.header("📊 Resume Analysis Dashboard")
+    st.header(
+        "📊 Resume Analysis Dashboard"
+    )
+
 
     score1, score2, score3, score4 = st.columns(4)
 
@@ -413,7 +778,7 @@ if analyze_button:
 
         st.metric(
             "🎯 Job Match",
-            f"{match_score:.1f}%"
+            f"{match_percentage:.1f}%"
         )
 
 
@@ -426,7 +791,13 @@ if analyze_button:
 
 
     st.progress(
-        int(final_ai_score)
+        min(
+            max(
+                int(final_ai_score),
+                0
+            ),
+            100
+        )
     )
 
 
@@ -445,21 +816,21 @@ if analyze_button:
 
         st.info(
             "👍 Good resume-job alignment. "
-            "A few targeted improvements can make your resume stronger."
+            "A few targeted improvements can make the resume stronger."
         )
 
     elif final_ai_score >= 40:
 
         st.warning(
             "⚠️ Moderate alignment. "
-            "Consider improving keywords, skills and job-specific content."
+            "Consider improving job-specific content and resume structure."
         )
 
     else:
 
         st.error(
             "🚨 Low alignment. "
-            "Your resume needs stronger alignment with the target job."
+            "The current resume and job description have limited overall alignment."
         )
 
 
@@ -469,14 +840,19 @@ if analyze_button:
 
     st.divider()
 
-    st.header("📋 ATS Analysis")
+    st.header(
+        "📋 ATS Analysis"
+    )
+
 
     ats_col1, ats_col2 = st.columns(2)
 
 
     with ats_col1:
 
-        st.subheader("ATS Score")
+        st.subheader(
+            "ATS Score"
+        )
 
         st.metric(
             "ATS Compatibility",
@@ -484,13 +860,21 @@ if analyze_button:
         )
 
         st.progress(
-            int(ats_score)
+            min(
+                max(
+                    int(ats_score),
+                    0
+                ),
+                100
+            )
         )
 
 
     with ats_col2:
 
-        st.subheader("ATS Interpretation")
+        st.subheader(
+            "ATS Interpretation"
+        )
 
         if ats_score >= 80:
 
@@ -521,28 +905,59 @@ if analyze_button:
     # ATS BREAKDOWN
     # ========================================================
 
-    with st.expander("🔍 View ATS Breakdown"):
+    with st.expander(
+        "🔍 View ATS Breakdown"
+    ):
 
-        keyword_count = len(job_skills)
+        breakdown1, breakdown2, breakdown3 = st.columns(3)
 
-        matched_count = (
-            keyword_count - len(missing_skills)
-        )
 
-        resume_word_count = len(
-            resume_text.split()
+        with breakdown1:
+
+            st.metric(
+                "Keyword Match",
+                f"{ats_keyword_match:.1f}%"
+            )
+
+            st.caption(
+                "Weight: 40%"
+            )
+
+
+        with breakdown2:
+
+            st.metric(
+                "Skill Match",
+                f"{ats_skill_match:.1f}%"
+            )
+
+            st.caption(
+                "Weight: 35%"
+            )
+
+
+        with breakdown3:
+
+            st.metric(
+                "Resume Quality",
+                f"{resume_quality:.1f}%"
+            )
+
+            st.caption(
+                "Weight: 25%"
+            )
+
+
+        st.write(
+            f"**Resume Word Count:** {len(resume_text.split())}"
         )
 
         st.write(
-            f"**Resume Word Count:** {resume_word_count}"
+            f"**Recognized Job Skills:** {len(job_skills)}"
         )
 
         st.write(
-            f"**Recognized Job Skills:** {keyword_count}"
-        )
-
-        st.write(
-            f"**Matched Skills:** {matched_count}"
+            f"**Matched Skills:** {len(matched_skills)}"
         )
 
         st.write(
@@ -556,14 +971,19 @@ if analyze_button:
 
     st.divider()
 
-    st.header("🧠 Skill Analysis")
+    st.header(
+        "🧠 Skill Analysis"
+    )
+
 
     skill_col1, skill_col2 = st.columns(2)
 
 
     with skill_col1:
 
-        st.subheader("✅ Skills Found in Resume")
+        st.subheader(
+            "✅ Skills Found in Resume"
+        )
 
         if resume_skills:
 
@@ -582,13 +1002,15 @@ if analyze_button:
 
     with skill_col2:
 
-        st.subheader("💼 Skills Required by Job")
+        st.subheader(
+            "💼 Skills Required by Job"
+        )
 
         if job_skills:
 
             for skill in job_skills:
 
-                if skill in resume_skills:
+                if str(skill).strip().lower() in resume_skill_map:
 
                     st.success(
                         f"✓ {skill}"
@@ -608,24 +1030,27 @@ if analyze_button:
 
 
     # ========================================================
-    # MISSING SKILLS
+    # SKILL GAP
     # ========================================================
 
     st.divider()
 
-    st.header("📌 Skill Gap Analysis")
+    st.header(
+        "📌 Skill Gap Analysis"
+    )
 
 
     if missing_skills:
 
         st.warning(
-            f"You are missing {len(missing_skills)} recognized skill(s) "
-            "from the job description."
+            f"You are missing {len(missing_skills)} "
+            "recognized skill(s) from the job description."
         )
 
-        missing_col1, missing_col2 = st.columns(2)
+        gap_col1, gap_col2 = st.columns(2)
 
-        with missing_col1:
+
+        with gap_col1:
 
             for skill in missing_skills:
 
@@ -633,11 +1058,12 @@ if analyze_button:
                     f"🔸 **{skill}**"
                 )
 
-        with missing_col2:
+
+        with gap_col2:
 
             st.info(
-                "Consider adding these skills only if you genuinely "
-                "have relevant knowledge or experience."
+                "Consider adding these skills only if you "
+                "genuinely have relevant knowledge or experience."
             )
 
     else:
@@ -654,30 +1080,28 @@ if analyze_button:
 
     st.divider()
 
-    st.header("📝 Resume Quality Analyzer")
-
-    quality_feedback = []
-
-
-    resume_lower = resume_text.lower()
+    st.header(
+        "📝 Resume Quality Analyzer"
+    )
 
 
-    # Contact information
+    # Contact
+
     if "@" in resume_text:
 
-        quality_feedback.append(
-            ("success", "✅ Email/contact information detected.")
-
+        st.success(
+            "✅ Email/contact information detected."
         )
 
     else:
 
-        quality_feedback.append(
-            ("warning", "⚠️ Email/contact information not clearly detected.")
+        st.warning(
+            "⚠️ Email/contact information not clearly detected."
         )
 
 
     # Education
+
     education_keywords = [
         "education",
         "degree",
@@ -689,23 +1113,25 @@ if analyze_button:
         "college"
     ]
 
+
     if any(
         keyword in resume_lower
         for keyword in education_keywords
     ):
 
-        quality_feedback.append(
-            ("success", "✅ Education section detected.")
+        st.success(
+            "✅ Education section detected."
         )
 
     else:
 
-        quality_feedback.append(
-            ("warning", "⚠️ Education section not clearly detected.")
+        st.warning(
+            "⚠️ Education section not clearly detected."
         )
 
 
     # Experience
+
     experience_keywords = [
         "experience",
         "work experience",
@@ -714,73 +1140,51 @@ if analyze_button:
         "internship"
     ]
 
+
     if any(
         keyword in resume_lower
         for keyword in experience_keywords
     ):
 
-        quality_feedback.append(
-            ("success", "✅ Experience section detected.")
+        st.success(
+            "✅ Experience section detected."
         )
 
     else:
 
-        quality_feedback.append(
-            ("warning", "⚠️ Experience section not clearly detected.")
+        st.warning(
+            "⚠️ Experience section not clearly detected."
         )
 
 
     # Projects
-    project_keywords = [
-        "project",
-        "projects"
-    ]
 
-    if any(
-        keyword in resume_lower
-        for keyword in project_keywords
-    ):
+    if "project" in resume_lower:
 
-        quality_feedback.append(
-            ("success", "✅ Project section detected.")
+        st.success(
+            "✅ Project section detected."
         )
 
     else:
 
-        quality_feedback.append(
-            ("warning", "⚠️ Project section not clearly detected.")
+        st.warning(
+            "⚠️ Project section not clearly detected."
         )
 
 
     # Skills
+
     if resume_skills:
 
-        quality_feedback.append(
-            (
-                "success",
-                f"✅ {len(resume_skills)} recognized technical skills detected."
-            )
+        st.success(
+            f"✅ {len(resume_skills)} recognized technical skills detected."
         )
 
     else:
 
-        quality_feedback.append(
-            (
-                "warning",
-                "⚠️ No recognized technical skills detected."
-            )
+        st.warning(
+            "⚠️ No recognized technical skills detected."
         )
-
-
-    for feedback_type, message in quality_feedback:
-
-        if feedback_type == "success":
-
-            st.success(message)
-
-        else:
-
-            st.warning(message)
 
 
     # ========================================================
@@ -789,12 +1193,8 @@ if analyze_button:
 
     st.divider()
 
-    st.header("🔑 Keyword Analysis")
-
-    total_job_skills = len(job_skills)
-
-    matched_skill_count = (
-        total_job_skills - len(missing_skills)
+    st.header(
+        "🔑 Keyword Analysis"
     )
 
 
@@ -821,29 +1221,23 @@ if analyze_button:
 
         st.metric(
             "Missing Keywords",
-            len(missing_skills)
+            missing_skill_count
         )
-
-
-    if total_job_skills > 0:
-
-        keyword_percentage = (
-            matched_skill_count
-            / total_job_skills
-            * 100
-        )
-
-    else:
-
-        keyword_percentage = 0
 
 
     st.write(
         f"**Keyword Coverage: {keyword_percentage:.1f}%**"
     )
 
+
     st.progress(
-        int(keyword_percentage)
+        min(
+            max(
+                int(keyword_percentage),
+                0
+            ),
+            100
+        )
     )
 
 
@@ -853,28 +1247,45 @@ if analyze_button:
 
     st.divider()
 
-    st.header("🔎 AI Matching Analysis")
+    st.header(
+        "🔎 AI Matching Analysis"
+    )
+
 
     similarity_col1, similarity_col2 = st.columns(2)
 
 
     with similarity_col1:
 
-        st.subheader("TF-IDF Similarity")
+        st.subheader(
+            "TF-IDF Text Similarity"
+        )
 
         st.metric(
-            "Semantic/Text Similarity",
+            "TF-IDF Similarity",
             f"{similarity_score:.1f}%"
         )
 
+        st.caption(
+            "Measures lexical overlap between the resume and job description."
+        )
+
         st.progress(
-            int(similarity_score)
+            min(
+                max(
+                    int(similarity_score),
+                    0
+                ),
+                100
+            )
         )
 
 
     with similarity_col2:
 
-        st.subheader("Interpretation")
+        st.subheader(
+            "Interpretation"
+        )
 
         if similarity_score >= 80:
 
@@ -896,23 +1307,23 @@ if analyze_button:
 
         else:
 
-            st.error(
+            st.warning(
                 "Low textual alignment."
             )
 
 
     # ========================================================
-    # PERSONALIZED RESUME SUGGESTIONS
+    # PERSONALIZED SUGGESTIONS
     # ========================================================
 
     st.divider()
 
-    st.header("💡 Personalized Resume Suggestions")
+    st.header(
+        "💡 Personalized Resume Suggestions"
+    )
+
 
     try:
-
-        # IMPORTANT:
-        # generate_suggestions accepts missing_skills only
 
         suggestions = generate_suggestions(
             missing_skills
@@ -937,17 +1348,20 @@ if analyze_button:
     except Exception as e:
 
         st.warning(
-            f"Suggestions could not be generated: {str(e)}"
+            f"Suggestions could not be generated: {e}"
         )
 
 
     # ========================================================
-    # RECRUITER STYLE RECOMMENDATIONS
+    # RECRUITER RECOMMENDATIONS
     # ========================================================
 
     st.divider()
 
-    st.header("👔 Recruiter-Style Recommendations")
+    st.header(
+        "👔 Recruiter-Style Recommendations"
+    )
+
 
     recruiter_recommendations = []
 
@@ -955,59 +1369,61 @@ if analyze_button:
     if ats_score < 60:
 
         recruiter_recommendations.append(
-            "Improve ATS compatibility by using relevant job-specific keywords."
+            "Improve ATS compatibility by using relevant "
+            "job-specific keywords where they accurately "
+            "represent your experience."
         )
 
     elif ats_score < 80:
 
         recruiter_recommendations.append(
-            "Your ATS compatibility is reasonable. Add more targeted keywords where relevant."
+            "ATS compatibility has room for improvement. "
+            "Strengthen relevant keywords and resume structure."
         )
 
     else:
 
         recruiter_recommendations.append(
-            "Your resume demonstrates strong ATS compatibility."
+            "Your resume shows strong ATS compatibility "
+            "for the analyzed job description."
         )
 
 
-    if len(missing_skills) > 0:
+    if missing_skills:
 
         recruiter_recommendations.append(
-            "Review the missing skills and add relevant ones only when supported by your experience."
+            "Review the missing skills and add them only "
+            "when supported by your actual experience."
         )
 
     else:
 
         recruiter_recommendations.append(
-            "Your resume covers the recognized skills identified in the job description."
+            "Your resume covers all recognized technical "
+            "skills identified in the job description."
         )
 
 
     if similarity_score < 60:
 
         recruiter_recommendations.append(
-            "Use terminology and project descriptions that more closely reflect the target job description."
+            "Use terminology and project descriptions that "
+            "more closely reflect the target job description."
         )
 
     else:
 
         recruiter_recommendations.append(
-            "Your resume language has good alignment with the job description."
-        )
-
-
-    if "project" not in resume_lower:
-
-        recruiter_recommendations.append(
-            "Consider adding a clearly labeled Projects section with measurable outcomes."
+            "Resume language shows reasonable textual alignment "
+            "with the target job description."
         )
 
 
     if "experience" not in resume_lower:
 
         recruiter_recommendations.append(
-            "Consider adding a clearly labeled Experience section if applicable."
+            "Consider adding a clearly labeled Experience section "
+            "if applicable."
         )
 
 
@@ -1024,17 +1440,30 @@ if analyze_button:
 
     st.divider()
 
-    st.header("📈 Resume Optimization Report")
-
-    optimization_score = (
-        (ats_score * 0.4)
-        + (keyword_percentage * 0.3)
-        + (similarity_score * 0.3)
+    st.header(
+        "📈 Resume Optimization Report"
     )
 
+
+    optimization_score = (
+        (ats_score * 0.40)
+        + (keyword_percentage * 0.30)
+        + (similarity_score * 0.30)
+    )
+
+
     optimization_score = max(
-        0,
-        min(100, optimization_score)
+        0.0,
+        min(
+            100.0,
+            optimization_score
+        )
+    )
+
+
+    optimization_score = round(
+        optimization_score,
+        2
     )
 
 
@@ -1043,19 +1472,32 @@ if analyze_button:
         f"{optimization_score:.1f}%"
     )
 
+
     st.progress(
-        int(optimization_score)
+        min(
+            max(
+                int(optimization_score),
+                0
+            ),
+            100
+        )
     )
 
 
     optimization_col1, optimization_col2 = st.columns(2)
 
 
+    # Strengths
+
     with optimization_col1:
 
-        st.subheader("Strengths")
+        st.subheader(
+            "Strengths"
+        )
+
 
         strengths = []
+
 
         if ats_score >= 70:
 
@@ -1063,17 +1505,20 @@ if analyze_button:
                 "Strong ATS compatibility"
             )
 
+
         if similarity_score >= 60:
 
             strengths.append(
                 "Good job-description alignment"
             )
 
+
         if keyword_percentage >= 60:
 
             strengths.append(
                 "Good keyword coverage"
             )
+
 
         if resume_skills:
 
@@ -1082,26 +1527,31 @@ if analyze_button:
             )
 
 
-        if strengths:
+        if not strengths:
 
-            for strength in strengths:
-
-                st.success(
-                    f"✓ {strength}"
-                )
-
-        else:
-
-            st.info(
-                "More resume strengths can be developed."
+            strengths.append(
+                "Resume analysis completed; additional optimization opportunities identified."
             )
 
 
+        for strength in strengths:
+
+            st.success(
+                f"✓ {strength}"
+            )
+
+
+    # Improvement Areas
+
     with optimization_col2:
 
-        st.subheader("Improvement Areas")
+        st.subheader(
+            "Improvement Areas"
+        )
+
 
         improvements = []
+
 
         if ats_score < 70:
 
@@ -1109,17 +1559,20 @@ if analyze_button:
                 "Improve ATS compatibility"
             )
 
+
         if similarity_score < 60:
 
             improvements.append(
                 "Increase job-description alignment"
             )
 
+
         if keyword_percentage < 60:
 
             improvements.append(
                 "Improve relevant keyword coverage"
             )
+
 
         if missing_skills:
 
@@ -1128,19 +1581,19 @@ if analyze_button:
             )
 
 
-        if improvements:
+        if not improvements:
+
+            st.success(
+                "No major improvement areas detected."
+            )
+
+        else:
 
             for improvement in improvements:
 
                 st.warning(
                     f"⚠ {improvement}"
                 )
-
-        else:
-
-            st.success(
-                "No major improvement areas detected."
-            )
 
 
     # ========================================================
@@ -1149,7 +1602,10 @@ if analyze_button:
 
     st.divider()
 
-    st.header("🎯 AI Job Role Recommendations")
+    st.header(
+        "🎯 AI Job Role Recommendations"
+    )
+
 
     st.caption(
         "Based on the skills and information detected from your resume."
@@ -1166,29 +1622,19 @@ if analyze_button:
         )
 
 
-        # ----------------------------------------------------
-        # CASE 1: LIST / TUPLE
-        # ----------------------------------------------------
-
         if isinstance(
             role_recommendations,
             (list, tuple)
         ):
 
-            if len(role_recommendations) == 0:
-
-                st.info(
-                    "No job-role recommendations available."
-                )
-
-            else:
+            if role_recommendations:
 
                 for index, role_data in enumerate(
                     role_recommendations[:5]
                 ):
 
                     role_name = "Unknown Role"
-                    confidence = 0
+                    confidence = 0.0
 
 
                     if isinstance(
@@ -1196,23 +1642,19 @@ if analyze_button:
                         dict
                     ):
 
-                        role_name = (
+                        role_name = role_data.get(
+                            "job_role",
                             role_data.get(
-                                "job_role",
-                                role_data.get(
-                                    "role",
-                                    "Unknown Role"
-                                )
+                                "role",
+                                "Unknown Role"
                             )
                         )
 
-                        confidence = (
+                        confidence = role_data.get(
+                            "confidence",
                             role_data.get(
-                                "confidence",
-                                role_data.get(
-                                    "score",
-                                    0
-                                )
+                                "score",
+                                0
                             )
                         )
 
@@ -1231,21 +1673,23 @@ if analyze_button:
 
                     except Exception:
 
-                        confidence = 0
+                        confidence = 0.0
 
 
                     if confidence <= 1:
 
-                        confidence = confidence * 100
+                        confidence *= 100
 
 
                     confidence = max(
-                        0,
-                        min(100, confidence)
+                        0.0,
+                        min(
+                            100.0,
+                            confidence
+                        )
                     )
 
 
-                    # First role is target role
                     if index == 0:
 
                         selected_job_role = role_name
@@ -1256,7 +1700,7 @@ if analyze_button:
 
                         st.caption(
                             f"Top AI Recommendation • "
-                            f"Confidence: {confidence:.2f}%"
+                            f"Role Match Score: {confidence:.2f}%"
                         )
 
                         st.progress(
@@ -1270,7 +1714,7 @@ if analyze_button:
                         )
 
                         st.caption(
-                            f"AI Confidence: {confidence:.2f}%"
+                            f"Role Match Score: {confidence:.2f}%"
                         )
 
                         st.progress(
@@ -1285,32 +1729,32 @@ if analyze_button:
                         st.divider()
 
 
-        # ----------------------------------------------------
-        # CASE 2: DICTIONARY
-        # ----------------------------------------------------
+            else:
+
+                st.info(
+                    "No job-role recommendations available."
+                )
+
 
         elif isinstance(
             role_recommendations,
             dict
         ):
 
-            role_name = (
+            selected_job_role = role_recommendations.get(
+                "job_role",
                 role_recommendations.get(
-                    "job_role",
-                    role_recommendations.get(
-                        "role",
-                        "Unknown Role"
-                    )
+                    "role",
+                    "Unknown Role"
                 )
             )
 
-            confidence = (
+
+            confidence = role_recommendations.get(
+                "confidence",
                 role_recommendations.get(
-                    "confidence",
-                    role_recommendations.get(
-                        "score",
-                        0
-                    )
+                    "score",
+                    0
                 )
             )
 
@@ -1323,7 +1767,7 @@ if analyze_button:
 
             except Exception:
 
-                confidence = 0
+                confidence = 0.0
 
 
             if confidence <= 1:
@@ -1332,31 +1776,27 @@ if analyze_button:
 
 
             confidence = max(
-                0,
-                min(100, confidence)
+                0.0,
+                min(
+                    100.0,
+                    confidence
+                )
             )
 
 
-            selected_job_role = role_name
-
-
             st.subheader(
-                f"🥇 {role_name}"
+                f"🥇 {selected_job_role}"
             )
 
             st.caption(
                 f"AI Recommendation • "
-                f"Confidence: {confidence:.2f}%"
+                f"Role Match Score: {confidence:.2f}%"
             )
 
             st.progress(
                 int(confidence)
             )
 
-
-        # ----------------------------------------------------
-        # CASE 3: STRING
-        # ----------------------------------------------------
 
         elif role_recommendations:
 
@@ -1379,17 +1819,20 @@ if analyze_button:
     except Exception as e:
 
         st.warning(
-            f"Job role recommendation could not be generated: {str(e)}"
+            f"Job role recommendation could not be generated: {e}"
         )
 
 
     # ========================================================
-    # ROLE BASED SKILL GAP
+    # ROLE-BASED SKILL GAP
     # ========================================================
 
     st.divider()
 
-    st.header("🧩 Role-Based Skill Gap")
+    st.header(
+        "🧩 Role-Based Skill Gap"
+    )
+
 
     if selected_job_role:
 
@@ -1399,10 +1842,6 @@ if analyze_button:
 
 
         try:
-
-            # IMPORTANT:
-            # get_role_skill_gap requires:
-            # resume_text + job_role
 
             role_skill_gap = get_role_skill_gap(
                 resume_text,
@@ -1415,27 +1854,97 @@ if analyze_button:
                 dict
             ):
 
-                matched_role_skills = (
+                matched_role_skills = role_skill_gap.get(
+                    "matched_skills",
                     role_skill_gap.get(
-                        "matched_skills",
-                        role_skill_gap.get(
-                            "matching_skills",
-                            []
-                        )
+                        "matching_skills",
+                        []
                     )
                 )
 
 
-                missing_role_skills = (
+                missing_role_skills = role_skill_gap.get(
+                    "missing_skills",
                     role_skill_gap.get(
-                        "missing_skills",
-                        role_skill_gap.get(
-                            "skills_to_learn",
-                            []
-                        )
+                        "skills_to_learn",
+                        []
                     )
                 )
 
+
+                if not isinstance(
+                    matched_role_skills,
+                    (list, tuple, set)
+                ):
+
+                    matched_role_skills = (
+                        [matched_role_skills]
+                        if matched_role_skills
+                        else []
+                    )
+
+
+                if not isinstance(
+                    missing_role_skills,
+                    (list, tuple, set)
+                ):
+
+                    missing_role_skills = (
+                        [missing_role_skills]
+                        if missing_role_skills
+                        else []
+                    )
+
+
+                # ------------------------------------------------
+                # Normalize using actual resume skills
+                # ------------------------------------------------
+
+                detected_resume_lower = {
+                    str(skill).strip().lower()
+                    for skill in resume_skills
+                }
+
+
+                filtered_matched = []
+
+                for skill in matched_role_skills:
+
+                    skill_text = str(
+                        skill
+                    ).strip()
+
+
+                    if skill_text.lower() in detected_resume_lower:
+
+                        filtered_matched.append(
+                            skill_text
+                        )
+
+
+                # ------------------------------------------------
+                # Remove already-known skills from missing list
+                # ------------------------------------------------
+
+                filtered_missing = []
+
+                for skill in missing_role_skills:
+
+                    skill_text = str(
+                        skill
+                    ).strip()
+
+
+                    if skill_text.lower() not in detected_resume_lower:
+
+                        filtered_missing.append(
+                            skill_text
+                        )
+
+
+                # ------------------------------------------------
+                # Display
+                # ------------------------------------------------
 
                 role_col1, role_col2 = st.columns(2)
 
@@ -1447,23 +1956,15 @@ if analyze_button:
                     )
 
 
-                    if matched_role_skills:
+                    if filtered_matched:
 
-                        if isinstance(
-                            matched_role_skills,
-                            (list, tuple, set)
+                        for skill in sorted(
+                            set(filtered_matched),
+                            key=str.lower
                         ):
 
-                            for skill in matched_role_skills:
-
-                                st.success(
-                                    f"✓ {skill}"
-                                )
-
-                        else:
-
                             st.success(
-                                f"✓ {matched_role_skills}"
+                                f"✓ {skill}"
                             )
 
                     else:
@@ -1480,23 +1981,15 @@ if analyze_button:
                     )
 
 
-                    if missing_role_skills:
+                    if filtered_missing:
 
-                        if isinstance(
-                            missing_role_skills,
-                            (list, tuple, set)
+                        for skill in sorted(
+                            set(filtered_missing),
+                            key=str.lower
                         ):
 
-                            for skill in missing_role_skills:
-
-                                st.warning(
-                                    f"⚠ {skill}"
-                                )
-
-                        else:
-
                             st.warning(
-                                f"⚠ {missing_role_skills}"
+                                f"⚠ {skill}"
                             )
 
                     else:
@@ -1506,40 +1999,19 @@ if analyze_button:
                         )
 
 
-            elif isinstance(
-                role_skill_gap,
-                (list, tuple, set)
-            ):
-
-                st.subheader(
-                    "📚 Recommended Skills"
-                )
-
-                for skill in role_skill_gap:
-
-                    st.warning(
-                        f"⚠ {skill}"
-                    )
-
-
-            elif role_skill_gap:
-
-                st.info(
-                    str(role_skill_gap)
-                )
-
             else:
 
                 st.info(
-                    "No role-specific skill gap information available."
+                    "Role-specific skill gap information is unavailable."
                 )
 
 
         except Exception as e:
 
             st.warning(
-                f"Skill gap analysis error: {str(e)}"
+                f"Skill gap analysis error: {e}"
             )
+
 
     else:
 
@@ -1549,12 +2021,14 @@ if analyze_button:
 
 
     # ========================================================
-    # FINAL AI SUMMARY
+    # FINAL AI ASSESSMENT
     # ========================================================
 
     st.divider()
 
-    st.header("🏆 Final AI Resume Assessment")
+    st.header(
+        "🏆 Final AI Resume Assessment"
+    )
 
 
     final_col1, final_col2 = st.columns(
@@ -1570,7 +2044,13 @@ if analyze_button:
         )
 
         st.progress(
-            int(final_ai_score)
+            min(
+                max(
+                    int(final_ai_score),
+                    0
+                ),
+                100
+            )
         )
 
 
@@ -1584,31 +2064,30 @@ if analyze_button:
         if final_ai_score >= 80:
 
             st.success(
-                "🌟 Your resume shows strong alignment with the target job. "
-                "Focus on maintaining clear achievements and relevant keywords."
+                "🌟 Strong alignment with the target job. "
+                "The resume demonstrates good coverage across "
+                "ATS, skills and textual similarity."
             )
 
         elif final_ai_score >= 60:
 
             st.info(
-                "👍 Your resume has a good foundation. "
-                "Improving a few missing skills and job-specific keywords "
-                "can strengthen the overall match."
+                "👍 Good foundation. Targeted improvements to "
+                "job-specific content can strengthen alignment."
             )
 
         elif final_ai_score >= 40:
 
             st.warning(
-                "⚠️ Your resume has moderate alignment. "
-                "Consider tailoring your skills, projects and keywords "
-                "to the target role."
+                "⚠️ Moderate alignment. Review job-specific "
+                "keywords, skills and resume wording."
             )
 
         else:
 
             st.error(
-                "🚨 Your resume currently has low alignment with the target job. "
-                "Consider significantly tailoring the resume to the role."
+                "🚨 Low overall alignment based on the analyzed "
+                "ATS, skill-match and TF-IDF signals."
             )
 
 
@@ -1618,7 +2097,9 @@ if analyze_button:
 
     st.divider()
 
-    st.header(" Recommended Action Plan")
+    st.header(
+        "⚡ Recommended Action Plan"
+    )
 
 
     action_items = []
@@ -1627,28 +2108,32 @@ if analyze_button:
     if missing_skills:
 
         action_items.append(
-            "Review the missing skills and develop or highlight relevant experience."
+            "Review the missing skills and highlight them only "
+            "if you genuinely have relevant knowledge or experience."
         )
 
 
     if similarity_score < 60:
 
         action_items.append(
-            "Tailor your resume wording to the job description."
+            "Tailor resume wording and project descriptions "
+            "to the terminology used in the target job description."
         )
 
 
     if ats_score < 70:
 
         action_items.append(
-            "Improve ATS compatibility with relevant keywords and clear sections."
+            "Improve ATS compatibility using relevant keywords "
+            "and clearly labeled resume sections."
         )
 
 
     if "project" not in resume_lower:
 
         action_items.append(
-            "Add a Projects section with technologies and measurable outcomes."
+            "Add a clearly labeled Projects section with technologies "
+            "and measurable outcomes."
         )
 
 
@@ -1662,7 +2147,8 @@ if analyze_button:
     if not action_items:
 
         action_items.append(
-            "Continue refining measurable achievements and keeping your resume targeted."
+            "Continue tailoring measurable achievements and "
+            "keeping the resume targeted to each job description."
         )
 
 
@@ -1677,35 +2163,43 @@ if analyze_button:
 
 
     # ========================================================
-    # EXTRACTED RESUME TEXT
+    # EXTRACTED TEXT
     # ========================================================
 
     st.divider()
 
-    with st.expander("📄 View Extracted Resume Text"):
+
+    with st.expander(
+        "📄 View Extracted Resume Text"
+    ):
 
         st.text_area(
-            "Extracted text",
+            "Extracted Resume Content",
             resume_text,
             height=400
         )
 
 
     # ========================================================
-    # DETECTED RESUME SKILLS
+    # DETECTED SKILLS
     # ========================================================
 
-    with st.expander(" View Detected Resume Skills"):
+    with st.expander(
+        "🔍 View Detected Resume Skills"
+    ):
 
         if resume_skills:
 
             st.write(
-                ", ".join(resume_skills)
+                ", ".join(
+                    str(skill)
+                    for skill in resume_skills
+                )
             )
 
         else:
 
-            st.write(
+            st.info(
                 "No recognized skills detected."
             )
 
@@ -1719,6 +2213,7 @@ if analyze_button:
     st.success(
         "✅ Analysis completed successfully!"
     )
+
 
     st.caption(
         "AI Resume Analyzer • Resume Parsing • Skill Extraction • "

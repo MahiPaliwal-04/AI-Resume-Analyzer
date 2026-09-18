@@ -1,340 +1,483 @@
+# ============================================================
+# AI JOB CLASSIFIER
+# ============================================================
 
-import os
-import pandas as pd
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from modules.skills import extract_skills
 
 
-# ===================================
-# PROJECT PATHS
-# ===================================
+# ============================================================
+# ROLE SKILL DATABASE
+# ============================================================
 
-BASE_DIR = os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-)
+ROLE_SKILLS = {
 
-DATA_PATH = os.path.join(
-    BASE_DIR,
-    "data",
-    "job_roles.csv"
-)
+    "Software Engineer": [
+        "Python",
+        "Java",
+        "C++",
+        "SQL",
+        "Git",
+        "OOP",
+        "Data Structures",
+        "Algorithms",
+        "Linux"
+    ],
+
+    "Backend Developer": [
+        "Python",
+        "Java",
+        "SQL",
+        "Git",
+        "Docker",
+        "AWS",
+        "Linux"
+    ],
+
+    "Data Analyst": [
+        "Python",
+        "SQL",
+        "Pandas",
+        "NumPy",
+        "Excel",
+        "Power BI"
+    ],
+
+    "Web Developer": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "Python",
+        "SQL",
+        "Git"
+    ],
+
+    "Python Developer": [
+        "Python",
+        "SQL",
+        "Git",
+        "Pandas",
+        "NumPy",
+        "Scikit-learn"
+    ]
+}
 
 
-# ===================================
-# LOAD DATASET
-# ===================================
+# ============================================================
+# ROLE KEYWORDS
+# ============================================================
 
-def load_job_data():
+ROLE_KEYWORDS = {
 
-    if not os.path.exists(DATA_PATH):
+    "Software Engineer": [
+        "software",
+        "software engineer",
+        "developer",
+        "programming",
+        "application",
+        "development",
+        "algorithms",
+        "data structures"
+    ],
 
-        raise FileNotFoundError(
-            f"Dataset not found: {DATA_PATH}"
+    "Backend Developer": [
+        "backend",
+        "back end",
+        "api",
+        "server",
+        "database",
+        "rest",
+        "backend developer"
+    ],
+
+    "Data Analyst": [
+        "data analyst",
+        "data analysis",
+        "analytics",
+        "reporting",
+        "dashboard",
+        "data",
+        "excel",
+        "business intelligence"
+    ],
+
+    "Web Developer": [
+        "web developer",
+        "website",
+        "frontend",
+        "front end",
+        "web",
+        "html",
+        "css",
+        "javascript"
+    ],
+
+    "Python Developer": [
+        "python developer",
+        "python",
+        "scripting",
+        "automation",
+        "django",
+        "flask"
+    ]
+}
+
+
+# ============================================================
+# HELPER — NORMALIZE TEXT
+# ============================================================
+
+def normalize_text(text):
+    """
+    Convert any input into normalized lowercase text.
+    """
+
+    if text is None:
+        return ""
+
+    return str(text).strip().lower()
+
+
+# ============================================================
+# HELPER — NORMALIZE SKILL LIST
+# ============================================================
+
+def normalize_skill_list(skills):
+    """
+    Convert skills into a case-insensitive dictionary.
+    """
+
+    if not skills:
+        return {}
+
+    result = {}
+
+    for skill in skills:
+
+        skill_text = str(skill).strip()
+
+        if skill_text:
+
+            result[
+                skill_text.lower()
+            ] = skill_text
+
+    return result
+
+
+# ============================================================
+# JOB ROLE RECOMMENDATIONS
+# ============================================================
+
+def get_job_recommendations(resume_text):
+    """
+    Recommend job roles based on resume skills and keywords.
+
+    Returns a list of dictionaries containing:
+        job_role
+        score
+        confidence
+    """
+
+    resume_text_normalized = normalize_text(
+        resume_text
+    )
+
+    # --------------------------------------------------------
+    # Extract resume skills
+    # --------------------------------------------------------
+
+    try:
+
+        resume_skills = extract_skills(
+            resume_text
         )
 
-    df = pd.read_csv(DATA_PATH)
+    except Exception:
 
-    if (
-        "job_role" not in df.columns
-        or "skills" not in df.columns
-    ):
-
-        raise ValueError(
-            "CSV must contain 'job_role' and 'skills' columns."
-        )
-
-    return df
+        resume_skills = []
 
 
-# ===================================
-# TRAIN ML MODEL
-# ===================================
-
-def train_model():
-
-    df = load_job_data()
-
-    X = df["skills"].fillna("")
-    y = df["job_role"]
-
-    vectorizer = TfidfVectorizer(
-        lowercase=True,
-        ngram_range=(1, 2)
+    resume_skill_map = normalize_skill_list(
+        resume_skills
     )
 
-    X_vectorized = vectorizer.fit_transform(
-        X
-    )
-
-    model = LogisticRegression(
-        max_iter=2000
-    )
-
-    model.fit(
-        X_vectorized,
-        y
-    )
-
-    return model, vectorizer
-
-
-# ===================================
-# PREDICT SINGLE JOB ROLE
-# ===================================
-
-def predict_job_role(resume_skills):
-
-    if not resume_skills:
-
-        return None
-
-    model, vectorizer = train_model()
-
-    if isinstance(resume_skills, list):
-
-        resume_text = ", ".join(
-            resume_skills
-        )
-
-    else:
-
-        resume_text = str(
-            resume_skills
-        )
-
-    resume_vector = vectorizer.transform(
-        [resume_text]
-    )
-
-    prediction = model.predict(
-        resume_vector
-    )[0]
-
-    return prediction
-
-
-# ===================================
-# GET MULTIPLE JOB RECOMMENDATIONS
-# ===================================
-
-def get_job_recommendations(
-    resume_skills,
-    top_n=5
-):
-
-    if not resume_skills:
-
-        return []
-
-    model, vectorizer = train_model()
-
-    if isinstance(resume_skills, list):
-
-        resume_text = ", ".join(
-            resume_skills
-        )
-
-    else:
-
-        resume_text = str(
-            resume_skills
-        )
-
-    resume_vector = vectorizer.transform(
-        [resume_text]
-    )
-
-    probabilities = model.predict_proba(
-        resume_vector
-    )[0]
-
-    classes = model.classes_
-
-    results = sorted(
-        zip(
-            classes,
-            probabilities
-        ),
-        key=lambda x: x[1],
-        reverse=True
-    )
 
     recommendations = []
 
-    for role, probability in results[:top_n]:
+
+    # --------------------------------------------------------
+    # Calculate role scores
+    # --------------------------------------------------------
+
+    for role, required_skills in ROLE_SKILLS.items():
+
+        role_skill_map = normalize_skill_list(
+            required_skills
+        )
+
+        matched_skill_count = 0
+
+
+        for skill_key in role_skill_map:
+
+            if skill_key in resume_skill_map:
+
+                matched_skill_count += 1
+
+
+        # Skill-based score
+        if role_skill_map:
+
+            skill_score = (
+                matched_skill_count
+                / len(role_skill_map)
+            ) * 100
+
+        else:
+
+            skill_score = 0.0
+
+
+        # ----------------------------------------------------
+        # Keyword-based score
+        # ----------------------------------------------------
+
+        keywords = ROLE_KEYWORDS.get(
+            role,
+            []
+        )
+
+        matched_keywords = 0
+
+
+        for keyword in keywords:
+
+            if normalize_text(keyword) in resume_text_normalized:
+
+                matched_keywords += 1
+
+
+        if keywords:
+
+            keyword_score = (
+                matched_keywords
+                / len(keywords)
+            ) * 100
+
+        else:
+
+            keyword_score = 0.0
+
+
+        # ----------------------------------------------------
+        # Combined role score
+        # ----------------------------------------------------
+
+        role_score = (
+            skill_score * 0.70
+            + keyword_score * 0.30
+        )
+
+
+        role_score = max(
+            0.0,
+            min(
+                100.0,
+                role_score
+            )
+        )
+
 
         recommendations.append(
             {
                 "job_role": role,
-                "confidence": round(
-                    float(probability) * 100,
+                "score": round(
+                    role_score,
                     2
+                ),
+                "confidence": round(
+                    role_score,
+                    2
+                ),
+                "matched_skills": [
+                    resume_skill_map[key]
+                    for key in role_skill_map
+                    if key in resume_skill_map
+                ],
+                "required_skills": list(
+                    role_skill_map.values()
                 )
             }
         )
 
-    return recommendations
 
+    # --------------------------------------------------------
+    # Sort by score
+    # --------------------------------------------------------
 
-# ===================================
-# GET SKILLS FOR A JOB ROLE
-# ===================================
-
-def get_role_skills(job_role):
-
-    df = load_job_data()
-
-    role_data = df[
-        df["job_role"].str.strip().str.lower()
-        == job_role.strip().lower()
-    ]
-
-    if role_data.empty:
-
-        return []
-
-    role_skills = set()
-
-    for skills in role_data["skills"].fillna(""):
-
-        for skill in str(skills).split(","):
-
-            skill = skill.strip()
-
-            if skill:
-
-                role_skills.add(
-                    skill
-                )
-
-    return sorted(
-        role_skills,
-        key=str.lower
+    recommendations.sort(
+        key=lambda item: item["score"],
+        reverse=True
     )
 
 
-# ===================================
-# GET ROLE SKILL GAP
-# ===================================
+    return recommendations
 
-def get_role_skill_gap(
-    resume_skills,
-    job_role
-):
 
-    if not resume_skills or not job_role:
+# ============================================================
+# ROLE-BASED SKILL GAP
+# ============================================================
+
+def get_role_skill_gap(resume_text, job_role):
+    """
+    Compare resume skills against the selected job role.
+
+    Returns:
+        {
+            "matched_skills": [...],
+            "missing_skills": [...]
+        }
+    """
+
+    # --------------------------------------------------------
+    # Validate role
+    # --------------------------------------------------------
+
+    if not job_role:
 
         return {
-            "role": job_role,
-            "required_skills": [],
             "matched_skills": [],
             "missing_skills": []
         }
 
-    required_skills = get_role_skills(
+
+    selected_role = str(
         job_role
+    ).strip()
+
+
+    # --------------------------------------------------------
+    # Find role requirements
+    # --------------------------------------------------------
+
+    required_skills = ROLE_SKILLS.get(
+        selected_role,
+        []
     )
 
-    # Normalize resume skills
-    resume_skill_map = {
-        str(skill).strip().lower(): str(skill).strip()
-        for skill in resume_skills
-        if str(skill).strip()
-    }
 
-    matched_skills = []
-    missing_skills = []
+    if not required_skills:
 
-    for required_skill in required_skills:
+        return {
+            "matched_skills": [],
+            "missing_skills": []
+        }
 
-        required_normalized = (
-            required_skill.strip().lower()
+
+    # --------------------------------------------------------
+    # Extract resume skills
+    # --------------------------------------------------------
+
+    try:
+
+        resume_skills = extract_skills(
+            resume_text
         )
 
-        if required_normalized in resume_skill_map:
+    except Exception:
+
+        resume_skills = []
+
+
+    # --------------------------------------------------------
+    # Normalize resume skills
+    # --------------------------------------------------------
+
+    resume_skill_map = normalize_skill_list(
+        resume_skills
+    )
+
+
+    # --------------------------------------------------------
+    # Normalize role skills
+    # --------------------------------------------------------
+
+    role_skill_map = normalize_skill_list(
+        required_skills
+    )
+
+
+    matched_skills = []
+
+    missing_skills = []
+
+
+    # --------------------------------------------------------
+    # Compare skills
+    # --------------------------------------------------------
+
+    for skill_key, original_skill in role_skill_map.items():
+
+        if skill_key in resume_skill_map:
 
             matched_skills.append(
-                required_skill
+                resume_skill_map[skill_key]
             )
 
         else:
 
             missing_skills.append(
-                required_skill
+                original_skill
             )
 
+
+    # --------------------------------------------------------
+    # Remove duplicates
+    # --------------------------------------------------------
+
+    matched_skills = sorted(
+        set(matched_skills),
+        key=str.lower
+    )
+
+
+    missing_skills = sorted(
+        set(missing_skills),
+        key=str.lower
+    )
+
+
     return {
-        "role": job_role,
-        "required_skills": required_skills,
         "matched_skills": matched_skills,
         "missing_skills": missing_skills
     }
 
 
-# ===================================
-# EVALUATE ML MODEL
-# ===================================
+# ============================================================
+# MODEL EVALUATION
+# ============================================================
 
 def evaluate_model():
+    """
+    Return information about the rule-based job
+    recommendation system.
 
-    df = load_job_data()
+    These are system metrics, not trained ML accuracy.
+    """
 
-    X = df["skills"].fillna("")
-    y = df["job_role"]
-
-    # Split RAW text data first
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.25,
-        random_state=42,
-        stratify=y
-    )
-
-    # Fit TF-IDF ONLY on training data
-    vectorizer = TfidfVectorizer(
-        lowercase=True,
-        ngram_range=(1, 2)
-    )
-
-    X_train_vectorized = vectorizer.fit_transform(
-        X_train
-    )
-
-    X_test_vectorized = vectorizer.transform(
-        X_test
-    )
-
-    # Train classifier
-    model = LogisticRegression(
-        max_iter=2000
-    )
-
-    model.fit(
-        X_train_vectorized,
-        y_train
-    )
-
-    # Predict test data
-    y_pred = model.predict(
-        X_test_vectorized
-    )
-
-    # Accuracy
-    accuracy = accuracy_score(
-        y_test,
-        y_pred
-    )
-
-    # Classification report
-    report = classification_report(
-        y_test,
-        y_pred,
-        zero_division=0
-    )
-
-    return accuracy, report
-
+    return {
+        "model_type": "Skill + Keyword Based Job Classifier",
+        "roles_supported": len(
+            ROLE_SKILLS
+        ),
+        "skill_database_size": len(
+            set(
+                skill
+                for skills in ROLE_SKILLS.values()
+                for skill in skills
+            )
+        ),
+        "classification_method": (
+            "Weighted skill and keyword matching"
+        )
+    }
