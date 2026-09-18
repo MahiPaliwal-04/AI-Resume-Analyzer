@@ -2,92 +2,80 @@
 
 An AI-powered Resume Analysis and Job Matching application built with Python and Streamlit.
 
-The system analyzes a candidate's resume against a given job description and provides ATS scoring, skill matching, TF-IDF similarity, missing skill detection, resume quality analysis, job-role recommendations, and personalized resume improvement suggestions.
+The application analyzes a candidate's resume against a target job description and provides ATS scoring, skill matching, TF-IDF text similarity, missing-skill detection, resume quality analysis, job-role recommendations, and personalized improvement suggestions.
 
 ---
 
 ## 🚀 Live Demo
 
-### 👉 [OPEN AI RESUME ANALYZER](https://ai-resume-analyzer-mahi.streamlit.app/)
+### 👉 [Open AI Resume Analyzer](https://ai-resume-analyzer-mahi.streamlit.app/)
 
-Try the fully deployed application directly in your browser.
+Try the deployed application directly in your browser.
 
 ---
 
 ## 💻 GitHub Repository
 
-👉 [View Source Code](https://github.com/MahiPaliwal-04/AI-Resume-Analyzer)
-
----
-
-## 📸 Project Screenshots
-
-### 🏠 Dashboard
-
-![Dashboard](screenshots/dashboard.png)
-
-### 📊 Resume & Job Matching Analysis
-
-![Matching Analysis](screenshots/matching-analysis.png)
-
-### 💼 AI Job Role Recommendations
-
-![Job Recommendations](screenshots/job-recommendations.png)
-
-### 📋 Resume Optimization Report
-
-![Optimization Report](screenshots/optimization-report.png)
+### 👉 [View Source Code](https://github.com/MahiPaliwal-04/AI-Resume-Analyzer)
 
 ---
 
 ## ✨ Key Features
 
-- 📄 PDF Resume Upload and Text Extraction
-- 🧠 Resume Skill Detection
-- 🎯 Job Description Matching
-- 📊 TF-IDF Based Text Similarity
-- 🤖 ATS Score Calculation
-- 📋 ATS Score Breakdown
-- 🔍 Missing Skill Detection
-- 📈 Resume Quality Analysis
-- 🔑 Keyword Analysis
-- 💼 AI Job Role Recommendations
+- 📄 PDF Resume Parsing
+- 🧠 Automated Technical Skill Extraction
+- 🎯 Job Description Skill Matching
+- 📊 ATS Compatibility Scoring
+- 🔎 TF-IDF Text Similarity
+- 📌 Missing Skill Detection
+- 📝 Resume Quality Analysis
+- 💡 Personalized Resume Suggestions
+- 👔 Recruiter-Style Recommendations
+- 🎯 AI Job Role Recommendations
 - 🧩 Role-Based Skill Gap Analysis
-- 💡 Personalized Resume Improvement Suggestions
-- 📑 Resume Optimization Report
-- ⚡ Quick Action Plan
-- 📊 Final AI Resume Assessment
-- 🌐 Interactive Streamlit Web Interface
+- 📈 Resume Optimization Report
+- 🏆 Final AI Resume Assessment
 
 ---
 
-## 🧠 AI & Machine Learning Techniques
+## 🧠 AI / ML Techniques
 
-### TF-IDF
+### 1. TF-IDF
 
-Term Frequency-Inverse Document Frequency is used to convert resume and job-description text into numerical feature vectors.
+TF-IDF is used to represent resume and job-description text numerically.
 
-### Cosine Similarity
+Cosine similarity is then used to measure textual overlap between the two documents.
 
-Cosine similarity is used to measure the similarity between the resume and job description.
+### 2. Skill-Based Matching
 
-### Skill Matching
+Recognized technical skills are extracted from both the resume and job description.
 
-The system extracts recognized technical skills from the resume and job description to identify matched and missing skills.
+The system compares the detected skills and calculates the percentage of matching skills.
 
-### ATS Analysis
+### 3. ATS Scoring
 
-An ATS-style scoring system evaluates important resume factors such as:
+The ATS analyzer combines multiple signals:
 
-- Resume–Job Description similarity
-- Skill matching
-- Keywords
-- Resume structure
-- Relevant sections
+- Keyword Match — 40%
+- Skill Match — 35%
+- Resume Quality — 25%
 
-### Job Role Recommendation
+### 4. Job Role Classification
 
-The application analyzes resume content and provides relevant job-role recommendations based on detected skills and resume information.
+The system uses weighted skill and keyword matching to calculate role-match scores for supported job roles.
+
+### 5. Resume Quality Analysis
+
+The analyzer checks factors such as:
+
+- Resume length
+- Email information
+- Phone number
+- Education
+- Skills
+- Projects
+- Experience
+- Action-oriented language
 
 ---
 
@@ -98,28 +86,22 @@ Resume PDF
     ↓
 Text Extraction
     ↓
-Resume Parsing
-    ↓
-Skill Detection
-    ↓
-Job Description Input
-    ↓
-TF-IDF Vectorization
-    ↓
-Cosine Similarity
-    ↓
-Skill Matching
-    ↓
-ATS Scoring
-    ↓
-Missing Skill Detection
+Skill Extraction
     ↓
 Resume Quality Analysis
     ↓
-Job Role Recommendations
+Job Description Analysis
     ↓
-Skill Gap Analysis
+Skill Matching
     ↓
-Personalized Suggestions
+TF-IDF Similarity
     ↓
-Final Resume Assessment
+ATS Scoring
+    ↓
+Job Role Recommendation
+    ↓
+Role-Based Skill Gap
+    ↓
+Resume Optimization
+    ↓
+Final AI Assessment
